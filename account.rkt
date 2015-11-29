@@ -3,7 +3,7 @@
 (require racket/list)
 (require racket/contract)
 
-(define-struct account (transactions number))
+(struct account (transactions number))
 
 (provide (contract-out
           [deposit (-> positive? account? any)]

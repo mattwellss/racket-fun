@@ -2,49 +2,52 @@
 
 (require racket/tcp net/url xml racket/contract)
 
-(provide serve)
+(provide make-server)
 (provide (contract-out
-          [set-routes! (-> hash? any)]))
+          (run (-> server? any))))
 
 (define dispatch-table (hash))
 
-(define (serve port-no)
+(struct server (routes port)
+  #:constructor-name make-server)
+
+(define (run server)
   (let ([serve-custo (make-custodian)])
     (parameterize ([current-custodian serve-custo])
-      (define listener (tcp-listen port-no 5 #t))
+      (define listener (tcp-listen (server-port server) 5 #t))
       (define (loop)
-        (accept-and-handle listener)
+        (accept-and-handle server listener)
         (loop))
       (thread loop))
     (λ ()
       (custodian-shutdown-all serve-custo))))
 
-(define (accept-and-handle listener)
+(define (accept-and-handle server listener)
   (let ([custo (make-custodian)])
     (parameterize ([current-custodian custo])
       (define-values (in out) (tcp-accept listener))
       (thread (λ ()
-                (handle in out)
+                (handle server in out)
                 (close-input-port in)
                 (close-output-port out))))
     (thread (λ ()
               (sleep 10)
               (custodian-shutdown-all custo)))))
 
-(define (handle in out)
+(define (handle server in out)
   (let ([req (regexp-match #rx"^GET (.+) HTTP/[0-9]+\\.[0-9]+"
-             (read-line in))])
+                           (read-line in))])
     (when req
       (regexp-match #rx"(\r\n|^)\r\n" in)
-      (let ([xexpr (dispatch (list-ref req 1))])
+      (let ([xexpr (dispatch server (list-ref req 1))])
         (display "HTTP/1.0 200 OKAY\r\n" out)
         (display "Server: racket\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE html>\r\n" out)
         (display (xexpr->string xexpr) out)))))
 
-(define (dispatch str-path)
+(define (dispatch server str-path)
   (let* ([url (string->url str-path)]
          [path (map path/param-path (url-path url))]
-         [match-cb (hash-ref dispatch-table (car path) #f)]
+         [match-cb (hash-ref (server-routes server) (car path) #f)]
          [query (url-query url)])
     (if match-cb
         (match-cb query)
@@ -54,9 +57,6 @@
   '(html (head (title "404"))
          (body
           (h1 ((class "404")) "Nothing found here"))))
-
-(define (set-routes! h)
-  (set! dispatch-table h))
 
 
 
