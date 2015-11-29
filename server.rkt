@@ -1,10 +1,12 @@
 #lang racket/base
 
-(require racket/tcp net/url xml "account.rkt")
+(require racket/tcp net/url xml racket/contract)
 
 (provide serve)
+(provide (contract-out
+          [set-routes! (-> hash? any)]))
 
-(define my-account (create-account))
+(define dispatch-table (hash))
 
 (define (serve port-no)
   (let ([serve-custo (make-custodian)])
@@ -30,8 +32,8 @@
               (custodian-shutdown-all custo)))))
 
 (define (handle in out)
-  (let ([req regexp-match #rx"^GET (.+) HTTP/[0-9]+\\.[0-9]+"
-             (read-line in)])
+  (let ([req (regexp-match #rx"^GET (.+) HTTP/[0-9]+\\.[0-9]+"
+             (read-line in))])
     (when req
       (regexp-match #rx"(\r\n|^)\r\n" in)
       (let ([xexpr (dispatch (list-ref req 1))])
@@ -53,18 +55,8 @@
          (body
           (h1 ((class "404")) "Nothing found here"))))
 
-(define dispatch-table
-  (hash
-   "hello" (λ (query)
-             '(html (head (title "Hello World!"))
-                    (body (h1 "Hello world"))))
-   "balance" (λ (query)
-               `(html (head (title "Your account balance"))
-                      (body (h1 "Account balance")
-                            (p ,(number->string (balance my-account))))))
-   "deposit" (λ (query)
-               (set! my-account (deposit 20 my-account))
-               `(html (head (title "Successful deposit"))))))
+(define (set-routes! h)
+  (set! dispatch-table h))
 
 
 
