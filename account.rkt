@@ -39,3 +39,6 @@
     (if (empty? transactions)
         sum
         (int-balance (rest transactions) (+ (first transactions) sum)))))
+
+(define (foldl-balance my-account)
+  (foldl + 0 (account-transactions my-account)))
