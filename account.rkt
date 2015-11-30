@@ -8,9 +8,10 @@
 (provide (contract-out
           [deposit (-> positive? account? any)]
           [withdraw (-> positive? positive-account? any)]
-          [balance (-> account? any)]))
-
-(provide create-account account-number)
+          [balance (-> account? any)]
+          [foldl-balance (-> account? any)])
+         create-account
+         account-number)
 
 (define account-count 0)
 

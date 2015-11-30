@@ -2,11 +2,9 @@
 
 (require racket/tcp net/url xml racket/contract)
 
-(provide make-server)
-(provide (contract-out
-          (run (-> server? any))))
-
-(define dispatch-table (hash))
+(provide make-server
+         (contract-out
+          [run (-> server? any)]))
 
 (struct server (routes port)
   #:constructor-name make-server)
